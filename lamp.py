@@ -4,10 +4,11 @@ UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 serverAddressPort = ("192.168.42.10", 8888)
 
 states = {
-    "move": "l:0:0:0:1#",
-    "wait":  "l:0:0:1:0#",
-    "error": "l:1:0:0:0#",
-    "auto": "l:0:1:0:0#"
+    "move": "l:0:0:1:0#",  #green
+    "wait":  "l:0:0:1:0#",  #yellow
+    "error": "l:1:0:0:0#",  #red
+    "auto": "l:0:1:0:0#" ,  #blue
+    "stop": "l:0:0:0:0#"
 }
 
 def send_lamp(state):
