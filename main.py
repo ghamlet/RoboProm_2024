@@ -28,6 +28,7 @@ red_tomatoes = 0
 green_tomatoes = 0
 
 red_ball = False
+waiting = True
 
 point = 0
 iter = 0
@@ -49,6 +50,7 @@ if __name__ == '__main__':
     
 
     coords = manip.generate_udp_packets_to_manip()
+    lamp.send_lamp("stop")
 
 
     while True:
@@ -101,8 +103,22 @@ if __name__ == '__main__':
             if data[0] == "R":    #dead mans switch
                 if data[2] == "1":
                     lamp.send_lamp("error")  
-                    pult.send_pult("error", 2, "ostanovka")
-                    exit()  #прекращаем работу, похорошему надо манипулятор передвинуть на базу
+                    pult.send_pult("error", 2, "extrennay")
+                    pult.send_pult("error", 3, "ostanovka")
+                    # manip.move_home()
+                    waiting = True
+
+                    while waiting:
+                        data, addr = udp.recvfrom(1024) 
+                        data = parseMsg(data)
+                        if data[0] == "R":    #dead mans switch
+                            if data[2] == "0":
+                                lamp.send_lamp("stop")
+                                waiting = False
+
+                        
+                      #прекращаем работу, похорошему надо манипулятор передвинуть на базу
+                    # break
 
                 if state_but:
                     if int(data[4]) > state_but: #если желтую кнопку нажали еще раз то исполняется следующая точка
@@ -138,14 +154,15 @@ if __name__ == '__main__':
 
 
             if AUTO:
-                if once_pult:
-                    lamp.send_lamp("move")
-                    pult.send_pult("move", 3, "tomatoes:" + str(red_tomatoes))
-                    once_pult = False
+                # if once_pult:
+                #     lamp.send_lamp("move")
+                #     pult.send_pult("move", 3, "tomatoes:" + str(red_tomatoes))
+                #     once_pult = False
 
                 if iter == 8: #когда манипулятор пройдет по всем позициям одной точки мы можем сменить точку
                     red_tomatoes += 1
                     pult.send_pult("move", 3,  "tomatoes:" + str(red_tomatoes))
+                    # pult.send_pult("move", 2, " ")
                     udp.sendto(str.encode("1"), (adreses["camera"], port))
 
                     iter = 0
@@ -154,7 +171,8 @@ if __name__ == '__main__':
                 if point == 6: # 6 помидор перетащили
                     print("Помидоры закончились")
                     lamp.send_lamp("wait")
-                    pult.send_pult("wait", 3,  "tomatoes:" + str(red_tomatoes))
+                    pult.send_pult("wait", 3, "tomatoes_over")
+                    # pult.send_pult("move", 2, " ")
                     work = False
 
                 if work:
@@ -162,20 +180,26 @@ if __name__ == '__main__':
                     manip.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
                    
                     if time.time() - start_time > 3:
-                        iter +=1
+                        iter += 1
+
+                        lamp.send_lamp("move")
+                        pult.send_pult("move", 2, "Auto mode")
+                        pult.send_pult("move", 3, "tomatoes:" + str(red_tomatoes))
                         once = True
                         start_time = time.time()
                 
 
 
             elif not AUTO:
-                lamp.send_lamp("move")
-                pult.send_pult("move", 3,  "tomatoes:" + str(red_tomatoes))
+                # lamp.send_lamp("move")
+                # pult.send_pult("move", 3,  "tomatoes:" + str(red_tomatoes))
+                # pult.send_pult("move", 2, " ")
                 
 
                 if iter == 8: #когда манипулятор пройдет по всем позициям одной точки мы можем сменить точку
                     red_tomatoes += 1
                     pult.send_pult("move", 3,  "tomatoes:" + str(red_tomatoes))
+                    pult.send_pult("move", 2, " ")
                     udp.sendto(str.encode("1"), (adreses["camera"], port))
 
                     iter = 0
@@ -183,8 +207,9 @@ if __name__ == '__main__':
 
                 if work:
                     manip.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
-                
-                    if time.time() - start_time > 2:
+                    lamp.send_lamp("move")
+                    pult.send_pult("move", 3, "tomatoes:" + str(red_tomatoes))
+                    if time.time() - start_time > 3:
                         iter +=1
                         once = True
                         start_time = time.time()
