@@ -20,6 +20,9 @@ AUTO = False
 START = False
 conveyor = False
 work = True
+state_but = None
+once = True
+once_pult = True
 
 red_tomatoes = 0
 green_tomatoes = 0
@@ -29,7 +32,7 @@ red_ball = False
 point = 0
 iter = 0
 
-
+start_time = 0
 def parseMsg(data: bytes) -> list:
     data = data.decode()
     data = list(data.split(":"))
@@ -51,6 +54,7 @@ if __name__ == '__main__':
     while True:
 
         while not START:
+            start_time = time.time()
             data, addr = udp.recvfrom(1024) 
             parse = parseMsg(data)
 
@@ -62,6 +66,8 @@ if __name__ == '__main__':
                 
                 manip.move_home() #двигаем манипуляятор в зону конвейера
                 time.sleep(3)
+
+                udp.sendto(str.encode("1"), (adreses["camera"], port))
 
                 START = True
                 AUTO = True
@@ -75,6 +81,8 @@ if __name__ == '__main__':
                 manip.move_home()  #двигаем манипуляятор в зону конвейера
                 time.sleep(3)
 
+
+                udp.sendto(str.encode("1"), (adreses["camera"], port))
                 START = True
                 AUTO = False
                 state_but = int(parse[4])
@@ -85,31 +93,35 @@ if __name__ == '__main__':
         try:
             data, addr = udp.recvfrom(1024) 
             data = parseMsg(data)
-            print("Received message:", data, "from:", addr)
+
+            if addr[0] != adreses["manip"]:
+                print("Received message:", data, "from:", addr)
 
 
             if data[0] == "R":    #dead mans switch
                 if data[2] == "1":
                     lamp.send_lamp("error")  
                     pult.send_pult("error", 2, "ostanovka")
-                    break  #прекращаем работу, похорошему надо манипулятор передвинуть на базу
+                    exit()  #прекращаем работу, похорошему надо манипулятор передвинуть на базу
 
-                elif int(data[4]) > state_but: #если желтую кнопку нажали еще раз то исполняется следующая точка
-                    point += 1
-                    work = True
-                    state_but = int(data[4])
+                if state_but:
+                    if int(data[4]) > state_but: #если желтую кнопку нажали еще раз то исполняется следующая точка
+                        point += 1
+                        work = True
+                        state_but = int(data[4])
 
 
             elif data[0] == "c": #сообщение от камеры
                 print("Камера отправила:", data)
-                if data[1] == "1":
-                    red_ball = True
+                udp.sendto(str.encode("0"), (adreses["camera"], port))
+                # if data[1] == "1":
+                #     red_ball = True
                 
-                else: red_ball = False
+                # else: red_ball = False
 
 
 
-            elif data[0] == "V":  #сообщение от dxl-iot  ПАКЕТ ФОРМАТА   V:1# ( 0/1 сервисный робот приехал и готов получить груз -> конвейер включен)
+            elif data[0] == "v":  #сообщение от dxl-iot  ПАКЕТ ФОРМАТА   V:1# ( 0/1 сервисный робот приехал и готов получить груз -> конвейер включен)
                 if data[1] == "1":
                     conveyor = True  #конвейер запущен
 
@@ -126,13 +138,15 @@ if __name__ == '__main__':
 
 
             if AUTO:
-                lamp.send_lamp("move")
-                pult.send_pult("move", 2, "кол-во помидор: " + str(red_tomatoes))
-                
+                if once_pult:
+                    lamp.send_lamp("move")
+                    pult.send_pult("move", 3, "tomatoes:" + str(red_tomatoes))
+                    once_pult = False
 
                 if iter == 8: #когда манипулятор пройдет по всем позициям одной точки мы можем сменить точку
                     red_tomatoes += 1
-                    pult.send_pult("move", 2, "кол-во помидор: " + str(red_tomatoes))
+                    pult.send_pult("move", 3,  "tomatoes:" + str(red_tomatoes))
+                    udp.sendto(str.encode("1"), (adreses["camera"], port))
 
                     iter = 0
                     point +=1
@@ -140,34 +154,40 @@ if __name__ == '__main__':
                 if point == 6: # 6 помидор перетащили
                     print("Помидоры закончились")
                     lamp.send_lamp("wait")
-                    pult.send_pult("wait", 2, "кол-во помидор: " + str(red_tomatoes))
+                    pult.send_pult("wait", 3,  "tomatoes:" + str(red_tomatoes))
                     work = False
 
                 if work:
-                    start_time = time.time()
+                    
                     manip.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
-                    if time.time() - start_time > 3:  #засекаю 3 секунды но программа не спит
+                   
+                    if time.time() - start_time > 3:
                         iter +=1
+                        once = True
+                        start_time = time.time()
                 
 
 
             elif not AUTO:
                 lamp.send_lamp("move")
-                pult.send_pult("move", 2, "кол-во помидор: " + str(red_tomatoes))
+                pult.send_pult("move", 3,  "tomatoes:" + str(red_tomatoes))
                 
 
                 if iter == 8: #когда манипулятор пройдет по всем позициям одной точки мы можем сменить точку
                     red_tomatoes += 1
-                    pult.send_pult("move", 2, "кол-во помидор: " + str(red_tomatoes))
+                    pult.send_pult("move", 3,  "tomatoes:" + str(red_tomatoes))
+                    udp.sendto(str.encode("1"), (adreses["camera"], port))
 
                     iter = 0
                     work = False
 
                 if work:
-                    start_time = time.time()
                     manip.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
-                    if time.time() - start_time > 3:  #засекаю 3 секунды но программа не спит
+                
+                    if time.time() - start_time > 2:
                         iter +=1
+                        once = True
+                        start_time = time.time()
                 
 
 
@@ -176,7 +196,7 @@ if __name__ == '__main__':
             
             # move_manip()
             
-            time.sleep(0.2)
+            # time.sleep(0.2)
 
 
  

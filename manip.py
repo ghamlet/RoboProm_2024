@@ -9,14 +9,14 @@ pack_coord_high = [260, 113, 250]
 pack_coord_low = [260, 113, 220]
 
 
-delta = 80  #смещение вниз
+delta = 100  #смещение вниз
 
-point_1 = [260, -77, 134]  #задаю верха
-point_2 = [240, -70, 100]
-point_3 = [260, -77, 134] 
-point_4 = [220, 100, 150]
-point_5 = [240, -70, 100]
-point_6 = [260, -77, 134]
+point_1 = [178, 1, 240]  #задаю верха  240 везде
+point_2 = [164, -54, 240]
+point_3 = [225, -14, 240] 
+point_4 = [210, -63, 240]
+point_5 = [273, -24, 240]
+point_6 = [260, -79, 240]
 
 
 points = [point_1, point_2 ,point_3, point_4 ,point_5, point_6]
@@ -47,7 +47,7 @@ def generate_udp_packets_to_manip():
 
 
 def move_home():
-    pass
+    move_manip("p:67:162:240:0#")
 
 
 def move_manip(cmd):
