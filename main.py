@@ -1,6 +1,6 @@
-import lamp 
-import pult 
-import manip 
+from lamp import Lamp
+from pult import Pult
+from manip import Manipulator
 import socket
 import time
 
@@ -33,6 +33,7 @@ point = 0
 iter = 0
 
 start_time = 0
+
 def parseMsg(data: bytes) -> list:
     data = data.decode()
     data = list(data.split(":"))
@@ -48,7 +49,13 @@ if __name__ == '__main__':
     print("Server start")
     
 
-    coords = manip.generate_udp_packets_to_manip()
+    manipulator = Manipulator((adreses["manip"], port))
+    coords = manipulator.generate_udp_packets_to_manip()
+
+    pult = Pult((adreses["pult"], port))
+    lamp = Lamp((adreses["lamp"], port))
+
+
     lamp.send_lamp("stop")
 
 
@@ -65,7 +72,7 @@ if __name__ == '__main__':
                 lamp.send_lamp("auto")
                 pult.send_pult("auto", 2, "Auto mode")
                 
-                manip.move_home() #двигаем манипуляятор в зону конвейера
+                manipulator.move_home() #двигаем манипуляятор в зону конвейера
                 time.sleep(3)
 
                 udp.sendto(str.encode("1"), (adreses["camera"], port))
@@ -79,7 +86,7 @@ if __name__ == '__main__':
                 lamp.send_lamp("wait")
                 pult.send_pult("wait", 2, "Manual mode")
                 
-                manip.move_home()  #двигаем манипуляятор в зону конвейера
+                manipulator.move_home()  #двигаем манипуляятор в зону конвейера
                 time.sleep(3)
 
 
@@ -172,7 +179,7 @@ if __name__ == '__main__':
 
 
                 if work:
-                    manip.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
+                    manipulator.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
                    
                     if time.time() - start_time > 3:
                         iter += 1
@@ -196,7 +203,7 @@ if __name__ == '__main__':
                     work = False
 
                 if work:
-                    manip.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
+                    manipulator.move_manip(coords[point][iter]) #в цикле отправляю один пакет и меняю его индексы
                     lamp.send_lamp("move")
                     pult.send_pult("move", 3, "tomatoes:" + str(red_tomatoes))
 
